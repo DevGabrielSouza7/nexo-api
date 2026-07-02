@@ -7,4 +7,4 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre
 COPY --from=build /target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-Dserver.port=${PORT:8080}", "-Xmx512m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Djava.net.preferIPv4Stack=true", "-Djava.net.preferIPv6Addresses=false", "-Dserver.port=${PORT:8080}", "-Xmx512m", "-jar", "app.jar"]
