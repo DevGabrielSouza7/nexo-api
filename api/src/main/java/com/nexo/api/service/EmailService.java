@@ -1,65 +1,88 @@
 package com.nexo.api.service;
 
 import com.nexo.api.model.Agendamento;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    @Value("${brevo.api.key}")
+    private String apiKey;
 
-    // Pega automaticamente o e-mail que você configurou no application.properties
-    @Value("${spring.mail.username}")
+    @Value("${brevo.email.remetente}")
     private String emailRemetente;
 
     public void enviarEmailsAgendamento(Agendamento agendamento) {
+        // 1. E-mail para a CLÍNICA (Aviso interno)
+        enviarEmailViaBrevo(
+            emailRemetente, // A clínica recebe no próprio e-mail
+            "📌 Novo Agendamento: " + agendamento.getNome(),
+            "Um novo agendamento foi recebido pelo site!<br><br>" +
+            "👤 <b>Nome:</b> " + agendamento.getNome() + "<br>" +
+            "📱 <b>WhatsApp:</b> " + agendamento.getWhatsapp() + "<br>" +
+            "📧 <b>E-mail:</b> " + agendamento.getEmail() + "<br>" +
+            "🧠 <b>Atendimento:</b> " + agendamento.getAtendimento() + "<br>" +
+            "💻 <b>Modalidade:</b> " + agendamento.getModalidade() + "<br>" +
+            "💬 <b>Mensagem:</b> " + (agendamento.getMensagem() != null ? agendamento.getMensagem() : "Nenhuma mensagem enviada.")
+        );
+
+        // 2. E-mail para o PACIENTE (Confirmação)
+        enviarEmailViaBrevo(
+            agendamento.getEmail(), // Envia para o e-mail preenchido no formulário
+            "✨ Recebemos o seu agendamento | Nexo Psicologia",
+            "Olá, <b>" + agendamento.getNome() + "</b>!<br><br>" +
+            "Recebemos o seu pedido de agendamento para " + agendamento.getAtendimento() + " na modalidade " + agendamento.getModalidade() + ".<br><br>" +
+            "Ficamos muito felizes pelo seu contato! Tudo será tratado com o máximo de sigilo, respeito e acolhimento.<br><br>" +
+            "Nossa equipe já foi notificada e em breve entraremos em contato pelo seu WhatsApp (" + agendamento.getWhatsapp() + ") para confirmar o melhor dia e horário para a sua sessão.<br><br>" +
+            "Um abraço,<br>Equipe Nexo Psicologia Humanista"
+        );
+    }
+
+    private void enviarEmailViaBrevo(String emailDestino, String assunto, String conteudoHtml) {
         try {
-            // ==========================================================
-            // 1. E-MAIL PARA A CLÍNICA (Alerta de novo paciente)
-            // ==========================================================
-            SimpleMailMessage msgClinica = new SimpleMailMessage();
-            msgClinica.setFrom(emailRemetente);
-            msgClinica.setTo(emailRemetente); // Manda para o próprio e-mail da clínica
-            msgClinica.setSubject("📌 Novo Agendamento: " + agendamento.getNome());
-            msgClinica.setText(
-                "Um novo agendamento foi recebido pelo site!\n\n" +
-                "👤 Nome: " + agendamento.getNome() + "\n" +
-                "📱 WhatsApp: " + agendamento.getWhatsapp() + "\n" +
-                "📧 E-mail: " + agendamento.getEmail() + "\n" +
-                "🧠 Atendimento: " + agendamento.getAtendimento() + "\n" +
-                "💻 Modalidade: " + agendamento.getModalidade() + "\n" +
-                "💬 Mensagem: " + (agendamento.getMensagem() != null ? agendamento.getMensagem() : "Nenhuma mensagem enviada.") + "\n\n" +
-                "Acesse o painel ou entre em contato pelo WhatsApp do paciente para confirmar."
-            );
-            mailSender.send(msgClinica);
+            RestTemplate restTemplate = new RestTemplate();
+            String url = "https://api.brevo.com/v3/smtp/email";
 
-            // ==========================================================
-            // 2. E-MAIL PARA O PACIENTE (Confirmação acolhedora)
-            // ==========================================================
-            SimpleMailMessage msgPaciente = new SimpleMailMessage();
-            msgPaciente.setFrom(emailRemetente);
-            msgPaciente.setTo(agendamento.getEmail()); // Manda para o e-mail que o paciente digitou
-            msgPaciente.setSubject("✨ Recebemos o seu agendamento | Nexo Psicologia");
-            msgPaciente.setText(
-                "Olá, " + agendamento.getNome() + "!\n\n" +
-                "Recebemos o seu pedido de agendamento para " + agendamento.getAtendimento() + " na modalidade " + agendamento.getModalidade() + ".\n\n" +
-                "Ficamos muito felizes pelo seu contato! Tudo será tratado com o máximo de sigilo, respeito e acolhimento.\n\n" +
-                "Nossa equipe já foi notificada e em breve entraremos em contato pelo seu WhatsApp (" + agendamento.getWhatsapp() + ") para confirmar o melhor dia e horário para a sua sessão.\n\n" +
-                "Um abraço,\n" +
-                "Equipe Nexo Psicologia Humanista"
-            );
-            mailSender.send(msgPaciente);
+            // Montando os cabeçalhos de segurança com a sua chave
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", apiKey);
+            headers.set("accept", "application/json");
 
-            System.out.println("✅ E-mails disparados com sucesso!");
+            // Montando o "corpo" da requisição no formato que o Brevo exige (JSON)
+            Map<String, Object> body = new HashMap<>();
+            
+            Map<String, String> sender = new HashMap<>();
+            sender.put("name", "Nexo Psicologia");
+            sender.put("email", emailRemetente);
+            body.put("sender", sender);
+
+            Map<String, String> to = new HashMap<>();
+            to.put("email", emailDestino);
+            body.put("to", List.of(to));
+
+            body.put("subject", assunto);
+            body.put("htmlContent", conteudoHtml);
+
+            // Juntando tudo e disparando para a nuvem
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            
+            System.out.println("✅ E-mail HTTP disparado com sucesso! Status da API: " + response.getStatusCode());
 
         } catch (Exception e) {
-            // Boa prática: Se o e-mail falhar, o sistema avisa no log, mas não trava o agendamento!
-            System.err.println("⚠️ Erro ao disparar e-mail: " + e.getMessage());
+            System.err.println("⚠️ Erro ao disparar e-mail via Brevo API: " + e.getMessage());
         }
     }
 }
