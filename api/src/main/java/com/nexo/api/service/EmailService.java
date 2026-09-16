@@ -70,7 +70,7 @@ public class EmailService {
                         "<div style=\"background-color: #f7f5f0; border-left: 4px solid #5a6659; padding: 20px; margin: 30px 0; border-radius: 0 8px 8px 0;\">" +
                             "<p style=\"margin: 0; font-size: 15px; color: #2c302e; font-style: italic;\">&quot;Acreditamos que é justamente naquilo que nos une que nossa força se encontra. Estamos aqui para caminhar juntos com você.&quot;</p>" +
                         "</div>" +
-                        "<p style=\"font-size: 15px; line-height: 1.6; margin-bottom: 0;\">Se precisar de urgência ou quiser falar connosco diretamente, sinta-se à vontade para nos chamar no WhatsApp institucional: <strong>(79) 9983-8695</strong>.</p>" +
+                        "<p style=\"font-size: 15px; line-height: 1.6; margin-bottom: 0;\">Se precisar de urgência ou quiser falar connosco diretamente, sinta-se à vontade para nos chamar no WhatsApp institucional: <strong>(79) 9690-3490</strong>.</p>" +
                     "</div>" +
                     "<div style=\"background-color: #f0ede6; padding: 25px; text-align: center; color: #777777; font-size: 12px;\">" +
                         "<p style=\"margin: 0 0 5px 0; font-weight: bold; color: #113A23;\">Nexo Psicologia Humanista</p>" +
